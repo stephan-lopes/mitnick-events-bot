@@ -25,6 +25,14 @@ type Event struct {
 	Finished    bool
 }
 
+type EventUseCase interface {
+	CreateEvent(name, description string, date time.Time) (string, error)
+}
+
+type EventRepository interface {
+	Save(event *Event) error
+}
+
 func NewEvent(id, name, description string, finished bool, date time.Time) (*Event, error) {
 	event := &Event{
 		ID:          id,
