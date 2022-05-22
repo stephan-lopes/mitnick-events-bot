@@ -1,65 +1,102 @@
 package domain
 
 import (
-	"fmt"
+	"math/rand"
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/guiaanonima/mitnick-event-bot/utils"
 )
 
-func TestCreateEvent(t *testing.T) {
-	createdDate := time.Now()
+const ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+func TestNewEvent(t *testing.T) {
+
 	eventID, _ := utils.GenerateToken(EventIdPositions)
+	validName := randName(EventNameMinLength)
+	createdDate := time.Now()
 
-	event, err := NewEvent(eventID, "Test Event", "This is a test event", false, createdDate)
+	type args struct {
+		id          string
+		name        string
+		description string
+		finished    bool
+		date        time.Time
+	}
 
-	if err != nil {
-		t.Errorf("Error creating event: %s", err)
+	tests := []struct {
+		name string
+		args args
+		want *Event
+	}{
+		{
+			name: "Create event with valid parameters",
+			args: args{
+				id:          eventID,
+				name:        validName,
+				description: "This is a test event",
+				finished:    false,
+				date:        createdDate,
+			},
+			want: &Event{
+				ID:          eventID,
+				Name:        validName,
+				Description: "This is a test event",
+				Date:        createdDate,
+				Finished:    false,
+			},
+		},
+		{
+			name: "Create event withouth name",
+			args: args{
+				id:          eventID,
+				name:        "",
+				description: "This is a test event",
+				finished:    false,
+				date:        createdDate,
+			},
+			want: nil,
+		},
+		{
+			name: "Create event with name less than min characters",
+			args: args{
+				id:          eventID,
+				name:        randName(EventNameMinLength - 1),
+				description: "This is a test event",
+				finished:    false,
+				date:        createdDate,
+			},
+			want: nil,
+		},
+		{
+			name: "Create event with name more than max characters",
+			args: args{
+				id:          eventID,
+				name:        randName(EventNameMaxLength + 1),
+				description: "This is a test event",
+				finished:    false,
+				date:        createdDate,
+			},
+			want: nil,
+		},
 	}
-	if event.Name != "Test Event" {
-		t.Errorf("Expected event name to be 'Test Event', got '%s'", event.Name)
-	}
-	if event.Description != "This is a test event" {
-		t.Errorf("Expected event description to be 'This is a test event', got '%s'", event.Description)
-	}
-	if event.ID != eventID {
-		t.Errorf("Expected event ID to be '%s', got '%s'", eventID, event.ID)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, _ := NewEvent(tt.args.id, tt.args.name, tt.args.description, tt.args.finished, tt.args.date)
+
+			if !cmp.Equal(got, tt.want) {
+				t.Errorf("NewEvent() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
 
-func TestCreateEventWithoutName(t *testing.T) {
-	createdDate := time.Now()
-	eventID, _ := utils.GenerateToken(EventIdPositions)
-
-	_, err := NewEvent(eventID, "", "This is a test event", false, createdDate)
-	if err == nil {
-		t.Errorf("Expected error creating event without name, got nil")
+func randName(length int) string {
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = ALPHABET[rand.Intn(len(ALPHABET))]
 	}
-}
-
-func TestCreateEventWithNameLessThanMinLength(t *testing.T) {
-	createdDate := time.Now()
-	eventID, _ := utils.GenerateToken(EventIdPositions)
-
-	_, err := NewEvent(eventID, "Te", "This is a test event", false, createdDate)
-	if err == nil {
-		t.Errorf("Expected error creating event with name less than %d characters, got nil", EventNameMinLength)
-	}
-}
-
-func TestCreateEventWithNameMoreThanMaxLength(t *testing.T) {
-	createdDate := time.Now()
-	eventID, _ := utils.GenerateToken(EventIdPositions)
-
-	var name string
-
-	for i := 0; i < EventNameMaxLength+1; i++ {
-		name = fmt.Sprintf("%s%d", name, i)
-	}
-
-	_, err := NewEvent(eventID, name, "This is a test event", false, createdDate)
-	if err == nil {
-		t.Errorf("Expected error creating event with name more than %d characters, got nil", EventNameMaxLength)
-	}
+	return string(b)
 }
